@@ -8,10 +8,9 @@ services:
     ports:
       - "5432:5432"
     environment:
-      - DATABASE_HOST=127.0.0.1
-      - POSTGRES_USER: ${DATABASE_USER}
-      - POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
-      - POSTGRES_DB: ${DATABASE_NAME}
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=123456 
+      - POSTGRES_DB=chat-db
 
   pgadmin:
     image: dpage/pgadmin4
