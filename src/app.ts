@@ -3,6 +3,8 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import path from 'path';
+import prisma from './lib/prisma';
+import { Message } from '@prisma/client';
 
 const app = express();
 const server = createServer(app);
@@ -13,6 +15,37 @@ app.use(cors());
 app.use(express.static(path.join(__dirname, '/public')));
 
 const messages: [string] = ["Hola!"];
+
+app.get('/seed', async (req, res) => {
+
+    const exampleChat = await prisma.chat.create({
+        data: {
+            name: 'Chat-Unsa'
+        }
+    });
+
+    const exampleMessages = ["Saludos tio rolo", "Buenos dias Bombel"];
+    exampleMessages.forEach(async (mensaje) => {
+        const createdMessage = await prisma.message.create({
+            data: {
+                message: mensaje,
+                chatId: exampleChat.id
+            }
+        })
+        return createdMessage;
+    });
+
+    const chats = await prisma.chat.findMany({
+        include: {
+            Messages: true
+        }
+    })
+
+    res.json({
+        chats
+    })
+
+})
 
 io.on('connection', (socket) => {
     console.log('Esta conectado');
