@@ -16,6 +16,9 @@ app.use(express.static(path.join(__dirname, '/public')));
 
 app.get('/seed', async (req, res) => {
 
+    await prisma.message.deleteMany();
+    await prisma.chat.deleteMany();
+
     const exampleChat = await prisma.chat.create({
         data: {
             name: 'Chat-Unsa'
@@ -46,17 +49,25 @@ app.get('/seed', async (req, res) => {
 });
 
 app.get('/message', async (req, res) => {
-    const chatUnsa = await prisma.chat.findFirst({
-        where: {
-            name: 'Chat-Unsa'
-        },
-        include: {
-            Messages: true
-        }
-    })
-    res.json({
-        chatUnsa
-    })
+    try {
+        const chatUnsa = await prisma.chat.findFirst({
+            where: {
+                name: 'Chat-Unsa'
+            },
+            include: {
+                Messages: true
+            }
+        })
+        res.json({
+            chatUnsa
+        })
+    } catch (err) {
+        console.log(err);
+        res.status(404).json({
+            ok: true,
+            message: 'No se pudo encontrar el chat correspondiente'
+        })
+    }
 })
 
 app.post('/message', async (req, res) => {
@@ -101,7 +112,7 @@ app.post('/message', async (req, res) => {
         res.json({
             ok: true,
             newMessage
-        })
+        });
 
     } catch (err) {
         console.log(res);
@@ -113,6 +124,7 @@ app.post('/message', async (req, res) => {
 
 })
 
+// Sockets
 io.on('connection', (socket) => {
     console.log('Esta conectado');
 
@@ -122,29 +134,35 @@ io.on('connection', (socket) => {
 
     socket.emit('get-messages', "Mensajes nuevos");
 
-    socket.on('send-message', async (payload: string) => {
-        const chatUnsa = await prisma.chat.findFirst({ where: { name: 'Chat-Unsa' } });
+    socket.on('send-message', async (payload: { message: string, chat: string }) => {
 
-        await prisma.message.create({
-            data: {
-                message: payload,
-                chatId: chatUnsa!.id
+        const { chat, message } = payload;
+
+        try {
+            const data = await (await fetch('http://localhost:4000/message', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message,
+                    chatName: chat
+                })
+            })).json()
+
+            if (!data) {
+                throw new Error('No se pudo crear el mensaje');
             }
-        });
 
-        // const messages = (await prisma.chat.findFirst({ where: { name: 'Chat-Unsa' }, include: { Messages: true } }))?.Messages;
+            socket.broadcast.emit('get-messages', "Mensajes nuevos");
+            socket.emit('get-messages', "Mensajes nuevos");
+        } catch (err) {
+            console.log(err);
+        }
 
-        socket.broadcast.emit('get-messages', "Mensajes nuevos");
-        socket.emit('get-messages', "Mensajes nuevos");
     });
 
 });
-
-// app.get('/', (req, res) => {
-//     res.json({
-//         ok: true
-//     })
-// })
 
 server.listen('4000', () => {
     console.log('listen to http://localhost:4000')
