@@ -38,7 +38,11 @@ app.get('/seed', async (req, res) => {
 
     const chats = await prisma.chat.findMany({
         include: {
-            Messages: true
+            Messages: {
+                orderBy: {
+                    createdAt: 'asc'
+                }
+            }
         }
     })
 
@@ -127,12 +131,12 @@ app.post('/message', async (req, res) => {
 // Sockets
 io.on('connection', (socket) => {
     console.log('Esta conectado');
+    socket.emit('get-messages', "Mensajes nuevos");
 
     socket.on('disconnect', () => {
         console.log('desconectado')
     });
 
-    socket.emit('get-messages', "Mensajes nuevos");
 
     socket.on('send-message', async (payload: { message: string, chat: string }) => {
 
